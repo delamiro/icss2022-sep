@@ -32,3 +32,37 @@ Een compiler bestaat uit de volgende onderdelen:
 2. Parser
 3. Checker - Controleert types en semantiek
 4. Generator - Genereert uitvoerbare code
+
+
+
+| id   | gedaan?                                                                                   |
+|------|-------------------------------------------------------------------------------------------|
+| PA00 | Soort van, implementatie is er al alleen waar ik deze zou moeten gebruiken is een raadsel |
+| PA01 |                                                                                           |
+| PA02 |                                                                                           |
+| PA03 |                                                                                           |
+| PA04 |                                                                                           |
+| PA04 |                                                                                           |
+
+
+| id   | gedaan? |
+|------|---------|
+| CH00 |         |
+| CH01 |         |
+| CH02 |         |
+| CH03 |         |
+| CH04 |         |
+| CH05 |         |
+| CH06 |         |
+
+
+| id   | gedaan? |
+|------|---------|
+| TR01 |         |
+| TR02 |         |
+
+
+| id   | gedaan? |
+|------|---------|
+| GE01 |         |
+| GE02 |         |
