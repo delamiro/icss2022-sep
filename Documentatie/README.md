@@ -66,3 +66,8 @@ Een compiler bestaat uit de volgende onderdelen:
 |------|---------|
 | GE01 |         |
 | GE02 |         |
+
+
+## Eigen notes
+
+ASTListener MOET IK in werken, volgens chat is dat de ASTBuilder!!!! bouw hierop verder uit

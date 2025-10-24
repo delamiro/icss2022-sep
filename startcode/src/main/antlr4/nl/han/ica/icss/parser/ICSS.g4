@@ -48,3 +48,28 @@ ASSIGNMENT_OPERATOR: ':=';
 
 stylesheet: EOF;
 
+styleRule
+    : selector OPEN_BRACE declaration* CLOSE_BRACE
+    ;
+
+selector
+    : ID_IDENT
+    | CLASS_IDENT
+    | LOWER_IDENT
+    ;
+
+declaration
+    : LOWER_IDENT COLON value SEMICOLON
+    ;
+
+value
+    : COLOR
+    | PIXELSIZE
+    | PERCENTAGE
+    | SCALAR
+    | LOWER_IDENT
+    | TRUE
+    | FALSE
+    | ID_IDENT
+    | CLASS_IDENT
+    ;
