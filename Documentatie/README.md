@@ -2,9 +2,9 @@
 
 
 run het commando
-`antlr4 ICSS.g4`
-`
-in de parser map om een parser te laten genereren
+`mvn clean generate-sources`
+Om de gegenereerde resources opnieuwe te genereren.
+dit word gegenereerd op basis van de ICSS.g4 file. 
 
 
 

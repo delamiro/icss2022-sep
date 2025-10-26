@@ -46,7 +46,18 @@ ASSIGNMENT_OPERATOR: ':=';
 
 //--- PARSER: ---
 
-stylesheet: EOF;
+stylesheet
+    : statement* EOF
+    ;
+
+statement
+    : variableAssignment
+    | styleRule
+    ;
+
+variableAssignment
+    : CAPITAL_IDENT ASSIGNMENT_OPERATOR value SEMICOLON
+    ;
 
 styleRule
     : selector OPEN_BRACE declaration* CLOSE_BRACE
@@ -68,6 +79,7 @@ value
     | PERCENTAGE
     | SCALAR
     | LOWER_IDENT
+    | CAPITAL_IDENT
     | TRUE
     | FALSE
     | ID_IDENT
