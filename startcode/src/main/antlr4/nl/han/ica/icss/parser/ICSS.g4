@@ -53,6 +53,10 @@ stylesheet
 statement
     : variableAssignment
     | styleRule
+    | ifStatement
+    ;
+ifStatement
+    : IF expression OPEN_BRACE statement* CLOSE_BRACE (ELSE OPEN_BRACE statement* CLOSE_BRACE)?
     ;
 
 variableAssignment
@@ -74,6 +78,20 @@ declaration
     ;
 
 value
+    : expression
+    ;
+
+expression
+    : expression (PLUS | MIN) term   // Add/Subtract
+    | term                           // fallback
+    ;
+
+term
+    : term MUL primaryValue          // Multiply
+    | primaryValue                   // fallback
+    ;
+
+primaryValue
     : COLOR
     | PIXELSIZE
     | PERCENTAGE
@@ -84,4 +102,5 @@ value
     | FALSE
     | ID_IDENT
     | CLASS_IDENT
+    | BOX_BRACKET_OPEN expression BOX_BRACKET_CLOSE
     ;
