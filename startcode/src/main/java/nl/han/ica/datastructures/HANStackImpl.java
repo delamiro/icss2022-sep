@@ -31,4 +31,9 @@ public class HANStackImpl<T> implements IHANStack<T> {
         T lastValue = stack.get(stack.size()-1);
         return lastValue;
     }
+
+    @Override
+    public boolean isEmpty() {
+        return stack.isEmpty();
+    }
 }

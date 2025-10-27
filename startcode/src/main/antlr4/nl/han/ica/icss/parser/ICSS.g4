@@ -1,37 +1,32 @@
 grammar ICSS;
 
-//--- LEXER: ---
+// --- LEXER ---
 
-// IF support:
 IF: 'if';
 ELSE: 'else';
 BOX_BRACKET_OPEN: '[';
 BOX_BRACKET_CLOSE: ']';
 
-
-//Literals
+// Literals
 TRUE: 'TRUE';
 FALSE: 'FALSE';
 PIXELSIZE: [0-9]+ 'px';
 PERCENTAGE: [0-9]+ '%';
 SCALAR: [0-9]+;
 
-
-//Color value takes precedence over id idents
+// Colors
 COLOR: '#' [0-9a-f] [0-9a-f] [0-9a-f] [0-9a-f] [0-9a-f] [0-9a-f];
 
-//Specific identifiers for id's and css classes
+// Identifiers
 ID_IDENT: '#' [a-z0-9\-]+;
 CLASS_IDENT: '.' [a-z0-9\-]+;
-
-//General identifiers
 LOWER_IDENT: [a-z] [a-z0-9\-]*;
 CAPITAL_IDENT: [A-Z] [A-Za-z0-9_]*;
 
-//All whitespace is skipped
+// Whitespace
 WS: [ \t\r\n]+ -> skip;
 
-//
+// Symbols
 OPEN_BRACE: '{';
 CLOSE_BRACE: '}';
 SEMICOLON: ';';
@@ -41,22 +36,21 @@ MIN: '-';
 MUL: '*';
 ASSIGNMENT_OPERATOR: ':=';
 
-
-
-
-//--- PARSER: ---
+// --- PARSER ---
 
 stylesheet
     : statement* EOF
     ;
 
+block
+    : (declaration | ifStatement)*
+    ;
+
 statement
     : variableAssignment
     | styleRule
+    | declaration
     | ifStatement
-    ;
-ifStatement
-    : IF expression OPEN_BRACE statement* CLOSE_BRACE (ELSE OPEN_BRACE statement* CLOSE_BRACE)?
     ;
 
 variableAssignment
@@ -64,7 +58,7 @@ variableAssignment
     ;
 
 styleRule
-    : selector OPEN_BRACE declaration* CLOSE_BRACE
+    : selector OPEN_BRACE block CLOSE_BRACE
     ;
 
 selector
@@ -82,13 +76,13 @@ value
     ;
 
 expression
-    : expression (PLUS | MIN) term   // Add/Subtract
-    | term                           // fallback
+    : expression (PLUS | MIN) term
+    | term
     ;
 
 term
-    : term MUL primaryValue          // Multiply
-    | primaryValue                   // fallback
+    : term MUL primaryValue
+    | primaryValue
     ;
 
 primaryValue
@@ -103,4 +97,14 @@ primaryValue
     | ID_IDENT
     | CLASS_IDENT
     | BOX_BRACKET_OPEN expression BOX_BRACKET_CLOSE
+    ;
+
+ifStatement
+    : IF BOX_BRACKET_OPEN expression BOX_BRACKET_CLOSE
+      OPEN_BRACE block CLOSE_BRACE
+      (ELSE elseBlock)?
+    ;
+
+elseBlock
+    : OPEN_BRACE block CLOSE_BRACE
     ;
