@@ -64,8 +64,8 @@ Een compiler bestaat uit de volgende onderdelen:
 
 | id   | gedaan? |
 |------|---------|
-| GE01 |         |
-| GE02 |         |
+| GE01 | Ja      |
+| GE02 | Ja      |
 
 
 ## Eigen notes

@@ -7,6 +7,7 @@ import nl.han.ica.icss.ast.operations.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.ListIterator;
 
 public class Evaluator implements Transform {
 
@@ -22,57 +23,60 @@ public class Evaluator implements Transform {
 
         variableValues.clear();
         variableValues.push(new HashMap<>());
-        evaluateNode(ast.root);
+
+        // Start evaluation from the root
+        evaluateChildren(ast.root.getChildren());
+
         variableValues.pop();
     }
 
-    private void evaluateNode(ASTNode node) {
-        if (node == null) return;
+    private void evaluateChildren(ArrayList<ASTNode> children) {
+        ListIterator<ASTNode> iter = children.listIterator();
+        while (iter.hasNext()) {
+            ASTNode node = iter.next();
 
-        // 1️⃣ Variable assignment
-        if (node instanceof VariableAssignment) {
-            VariableAssignment assign = (VariableAssignment) node;
-            Literal value = evaluateExpression(assign.expression);
-            assign.expression = value;
-            variableValues.peek().put(assign.name.name, value);
-        }
+            if (node instanceof VariableAssignment) {
+                VariableAssignment assign = (VariableAssignment) node;
+                Literal value = evaluateExpression(assign.expression);
+                assign.expression = value;
+                variableValues.peek().put(assign.name.name, value);
+            }
+            else if (node instanceof IfClause) {
+                IfClause ifNode = (IfClause) node;
+                Literal condLit = evaluateExpression(ifNode.conditionalExpression);
+                ArrayList<ASTNode> replacement = new ArrayList<>();
 
-        // 2️⃣ IfClause: evaluate condition and recursively evaluate the chosen body
-        if (node instanceof IfClause) {
-            IfClause ifNode = (IfClause) node;
-            Literal condLit = evaluateExpression(ifNode.conditionalExpression);
+                if (condLit instanceof BoolLiteral) {
+                    if (((BoolLiteral) condLit).value) {
+                        replacement.addAll(ifNode.body);
+                    } else if (ifNode.elseClause != null) {
+                        replacement.addAll(ifNode.elseClause.body);
+                    }
+                }
 
-            ArrayList<ASTNode> bodyToApply = new ArrayList<>();
+                // Remove the IfClause
+                iter.remove();
 
-            if (condLit instanceof BoolLiteral) {
-                if (((BoolLiteral) condLit).value) {
-                    bodyToApply.addAll(ifNode.body);
-                } else if (ifNode.elseClause != null) {
-                    bodyToApply.addAll(ifNode.elseClause.body);
+                // Add all chosen nodes individually
+                for (ASTNode n : replacement) {
+                    iter.add(n);
+                }
+
+                // Evaluate newly inserted nodes
+                evaluateChildren(replacement);
+            }
+
+            else if (node instanceof Declaration) {
+                Declaration decl = (Declaration) node;
+                if (decl.expression != null) {
+                    Literal lit = evaluateExpression(decl.expression);
+                    decl.expression = lit;
                 }
             }
-
-            // Evaluate all statements in the chosen body immediately
-            for (ASTNode stmt : bodyToApply) {
-                evaluateNode(stmt);
+            else {
+                // Recurse on other node types
+                evaluateChildren(node.getChildren());
             }
-
-            return; // Skip further processing for this IfClause
-        }
-
-        // 3️⃣ Declaration: evaluate its expression
-        if (node instanceof Declaration) {
-            Declaration decl = (Declaration) node;
-            if (decl.expression != null) {
-                Literal lit = evaluateExpression(decl.expression);
-                decl.expression = lit;
-            }
-        }
-
-        // 4️⃣ Recursively evaluate children
-        ArrayList<ASTNode> childrenCopy = new ArrayList<>(node.getChildren());
-        for (ASTNode child : childrenCopy) {
-            evaluateNode(child);
         }
     }
 
@@ -117,7 +121,7 @@ public class Evaluator implements Transform {
                 if (op instanceof SubtractOperation) return new BoolLiteral(lv != rv);
             }
 
-            return null; // type mismatch
+            return null;
         }
 
         return null;
