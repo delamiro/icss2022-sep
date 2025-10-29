@@ -2,92 +2,68 @@ package nl.han.ica.icss.generator;
 
 import nl.han.ica.icss.ast.*;
 import nl.han.ica.icss.ast.literals.*;
-import nl.han.ica.icss.ast.operations.AddOperation;
-import nl.han.ica.icss.ast.operations.MultiplyOperation;
-import nl.han.ica.icss.ast.operations.SubtractOperation;
 import nl.han.ica.icss.ast.selectors.*;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class Generator {
 
     public String generate(AST ast) {
         if (ast == null || ast.root == null) return "";
         StringBuilder sb = new StringBuilder();
-        for (ASTNode child : ast.root.getChildren()) {
-            generateNode(child, sb, 0);
+
+        for (ASTNode node : ast.root.getChildren()) {
+            generateNode(node, sb, 0);
         }
+
         return sb.toString();
     }
 
     private void generateNode(ASTNode node, StringBuilder sb, int indentLevel) {
-        String indent = "    ".repeat(indentLevel);
+        String indent = "  ".repeat(indentLevel); // 2 spaces per level
 
         if (node instanceof Stylerule) {
             Stylerule rule = (Stylerule) node;
 
             // Collect selector names
-            List<String> selectorNames = new ArrayList<>();
-            for (ASTNode selNode : rule.getChildren()) {
-                if (selNode instanceof Selector) {
-                    selectorNames.add(getSelectorName((Selector) selNode));
+            ArrayList<String> selectorNames = new ArrayList<>();
+            for (Selector s : rule.selectors) {
+                selectorNames.add(getSelectorName(s));
+            }
+
+            // Open block
+            sb.append(indent).append(String.join(", ", selectorNames)).append(" {\n");
+
+            // Declarations and nested rules
+            for (ASTNode child : rule.getChildren()) {
+                if (child instanceof Declaration) {
+                    Declaration decl = (Declaration) child;
+                    sb.append(indent).append("  ") // extra indent for declarations
+                            .append(decl.property.name)
+                            .append(": ")
+                            .append(getLiteralValue(decl.expression))
+                            .append(";\n");
+                } else if (child instanceof Stylerule) {
+                    generateNode(child, sb, indentLevel + 1);
                 }
             }
 
-            // Only generate rule if it has selectors
-            if (!selectorNames.isEmpty()) {
-                sb.append(String.join(", ", selectorNames));
-                sb.append(" {\n");
-
-                // Declarations
-                for (ASTNode child : rule.getChildren()) {
-                    if (child instanceof Declaration) {
-                        generateNode(child, sb, indentLevel + 1);
-                    }
-                }
-
-                sb.append("}\n\n");
-            }
-        } else if (node instanceof Declaration) {
-            Declaration decl = (Declaration) node;
-            sb.append(indent)
-                    .append(decl.property.name)
-                    .append(": ")
-                    .append(generateExpression(decl.expression))
-                    .append(";\n");
+            // Close block
+            sb.append(indent).append("}\n\n");
         }
-        // You can extend here if you want nested rules or other AST nodes
     }
 
-    private String generateExpression(Expression expr) {
-        if (expr instanceof PixelLiteral) {
-            return ((PixelLiteral) expr).value + "px";
-        } else if (expr instanceof ColorLiteral) {
-            return ((ColorLiteral) expr).value;
-        } else if (expr instanceof ScalarLiteral) {
-            return Integer.toString(((ScalarLiteral) expr).value);
-        } else if (expr instanceof BoolLiteral) {
-            return ((BoolLiteral) expr).value ? "TRUE" : "FALSE";
-        } else if (expr instanceof VariableReference) {
-            return ((VariableReference) expr).name;
-        } else if (expr instanceof AddOperation) {
-            return generateExpression(((AddOperation) expr).lhs) + " + " +
-                    generateExpression(((AddOperation) expr).rhs);
-        } else if (expr instanceof SubtractOperation) {
-            return generateExpression(((SubtractOperation) expr).lhs) + " - " +
-                    generateExpression(((SubtractOperation) expr).rhs);
-        } else if (expr instanceof MultiplyOperation) {
-            return generateExpression(((MultiplyOperation) expr).lhs) + " * " +
-                    generateExpression(((MultiplyOperation) expr).rhs);
-        }
+    private String getLiteralValue(Expression expr) {
+        if (expr instanceof PixelLiteral) return ((PixelLiteral) expr).value + "px";
+        if (expr instanceof ColorLiteral) return ((ColorLiteral) expr).value;
+        if (expr instanceof ScalarLiteral) return String.valueOf(((ScalarLiteral) expr).value);
+        if (expr instanceof BoolLiteral) return String.valueOf(((BoolLiteral) expr).value).toUpperCase();
         return "";
     }
 
     private String getSelectorName(Selector s) {
-        if (s instanceof IdSelector) return "#" + ((IdSelector) s).id;
-        if (s instanceof ClassSelector) return "." + ((ClassSelector) s).cls;
+        if (s instanceof IdSelector) return ((IdSelector) s).id;
+        if (s instanceof ClassSelector) return ((ClassSelector) s).cls;
         if (s instanceof TagSelector) return ((TagSelector) s).tag;
         return "";
     }
