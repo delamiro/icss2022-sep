@@ -1,10 +1,10 @@
 package nl.han.ica.icss.checker;
 
 import nl.han.ica.icss.ast.*;
-import nl.han.ica.icss.ast.literals.BoolLiteral;
-import nl.han.ica.icss.ast.literals.ColorLiteral;
-import nl.han.ica.icss.ast.literals.PixelLiteral;
-import nl.han.ica.icss.ast.literals.ScalarLiteral;
+import nl.han.ica.icss.ast.literals.*;
+import nl.han.ica.icss.ast.operations.AddOperation;
+import nl.han.ica.icss.ast.operations.MultiplyOperation;
+import nl.han.ica.icss.ast.operations.SubtractOperation;
 import nl.han.ica.icss.ast.types.ExpressionType;
 
 import java.util.HashMap;
@@ -16,125 +16,179 @@ public class Checker {
     private LinkedList<HashMap<String, ExpressionType>> variableTypes;
 
     public void check(AST ast) {
-        if (ast == null || ast.root == null) return;
-
         variableTypes = new LinkedList<>();
-        variableTypes.push(new HashMap<>());
-        checkNode(ast.root);
-        variableTypes.pop();
+        HashMap<String, ExpressionType> scope = new HashMap<>();
+        variableTypes.addFirst(scope);
+        checkStylesheet(ast.root);
+        variableTypes.removeFirst();
     }
 
-    private void checkNode(ASTNode node) {
-        if (node == null) return;
+    private ExpressionType getExpressionType(Expression expression) {
+        if (expression instanceof PixelLiteral) {
+            return ExpressionType.PIXEL;
+        } else if (expression instanceof PercentageLiteral) {
+            return ExpressionType.PERCENTAGE;
+        } else if (expression instanceof ColorLiteral) {
+            return ExpressionType.COLOR;
+        } else if (expression instanceof BoolLiteral) {
+            return ExpressionType.BOOL;
+        } else if (expression instanceof ScalarLiteral) {
+            return ExpressionType.SCALAR;
+        } else if (expression instanceof Operation) {
+            return checkExpression((Operation) expression);
+        } else if (expression instanceof VariableReference) {
+            return getVariableReferenceExpressionType((VariableReference) expression);
+        } else {
+            return ExpressionType.UNDEFINED;
+        }
+    }
 
-        // Determine if this node introduces a new scope (rules, if-blocks, else-blocks)
-        boolean isNewScope = (node instanceof Stylerule) || (node instanceof IfClause) || (node instanceof ElseClause);
-        if (isNewScope) variableTypes.push(new HashMap<>());
+    private void checkStylesheet(Stylesheet node) {
+        for (ASTNode child : node.getChildren()) {
+            if (child instanceof VariableAssignment) {
+                checkVariableAssignment((VariableAssignment) child);
+                variableTypes.getFirst().put(((VariableAssignment) child).name.name, getExpressionType(((VariableAssignment) child).expression));
+            }
+            if (child instanceof Stylerule) {
+                checkStyleRule((Stylerule) child);
+            }
+        }
+    }
 
-        // 1️⃣ Handle variable assignments
+    private void checkVariableAssignment(VariableAssignment child) {
+        ExpressionType expressionType = getExpressionType(child.expression);
+        if(expressionType == ExpressionType.SCALAR){
+            child.setError("Variable assignment got assigned with invalid type: " + expressionType);
+        }
+    }
+
+    private void checkStyleRule(Stylerule node) {
+        HashMap<String, ExpressionType> styleRuleScope = new HashMap<>();
+        variableTypes.addFirst(styleRuleScope);
+        for (ASTNode child : node.getChildren()) {
+            checkBody(child, styleRuleScope);
+        }
+        variableTypes.removeFirst();
+    }
+
+
+    private void checkBody(ASTNode node, HashMap<String, ExpressionType> scope) {
         if (node instanceof VariableAssignment) {
-            VariableAssignment assign = (VariableAssignment) node;
-            String varName = assign.name.name;
-            ExpressionType type = getExpressionType(assign.expression);
-
-            if (type == null) {
-                assign.setError("Variable '" + varName + "' has invalid type");
-            } else {
-                variableTypes.peek().put(varName, type);
-            }
+            checkVariableAssignment((VariableAssignment) node);
+            scope.put(((VariableAssignment) node).name.name, getExpressionType(((VariableAssignment) node).expression));
         }
 
-        // 2️⃣ Validate variable references
-        if (node instanceof VariableReference) {
-            VariableReference ref = (VariableReference) node;
-            if (!isVariableDefined(ref.name)) {
-                ref.setError("Variable '" + ref.name + "' used but not defined in this scope");
-            }
-        }
-
-        // 3️⃣ Disallow colors in operations
-        if (node instanceof Operation) {
-            Operation op = (Operation) node;
-            ExpressionType leftType = getExpressionType(op.lhs);
-            ExpressionType rightType = getExpressionType(op.rhs);
-
-            if (leftType == ExpressionType.COLOR || rightType == ExpressionType.COLOR) {
-                op.setError("Cannot use colors in operations (+, -, *)");
-            }
-        }
-
-        // 4️⃣ Property type validation
         if (node instanceof Declaration) {
-            Declaration decl = (Declaration) node;
+            checkDeclaration((Declaration) node);
+        }
 
-            if (decl.property != null && decl.expression != null) {
-                ExpressionType valType = getExpressionType(decl.expression);
-                ExpressionType expectedType = getExpectedType(decl.property.name);
+    }
 
-                if (expectedType != null && valType != expectedType) {
-                    decl.setError("Property '" + decl.property.name + "' cannot have value of type " + valType);
+    private void checkDeclaration(Declaration node) {
+        ExpressionType nodeType = getExpressionType(node.expression);
+        if (node.property.name.equals("width") || node.property.name.equals("height")) {
+            if (!(nodeType == ExpressionType.PERCENTAGE) && !(nodeType == ExpressionType.PIXEL)) {
+                if(nodeType == ExpressionType.UNDEFINED){
+                    node.setError("Property name '" + node.property.name + "' got assigned an invalid OPERATION or VARIABLE REFERENCE");
+                } else {
+                    node.expression.setError("Property name '" + node.property.name + "' got assigned an invalid type: " + nodeType);
                 }
             }
         }
 
-        // 5️⃣ Recurse into children
-        for (ASTNode child : node.getChildren()) {
-            checkNode(child);
+        if (node.property.name.equals("color") || node.property.name.equals("background-color")) {
+            if (!( nodeType == ExpressionType.COLOR)) {
+                if(nodeType == ExpressionType.UNDEFINED){
+                    node.setError("Property name '" + node.property.name + "' got assigned an invalid OPERATION or VARIABLE REFERENCE");
+                } else {
+                    node.expression.setError("Property name: '" + node.property.name + "' got assigned an invalid type: " + nodeType);
+                }
+            }
         }
+    }
 
-        // 6️⃣ Pop scope if it was a new scope
-        if (isNewScope) variableTypes.pop();
+    private ExpressionType checkExpression(Operation handSide) {
+        ExpressionType type = ExpressionType.UNDEFINED;
+
+        if (handSide instanceof AddOperation) {
+            type = checkAddOperation((AddOperation) handSide);
+        } else if (handSide instanceof SubtractOperation) {
+            type = checkSubtractOperation((SubtractOperation) handSide);
+        } else if (handSide instanceof MultiplyOperation) {
+            type = checkMultiplyOperation((MultiplyOperation) handSide);
+        }
+        return type;
     }
 
 
-    private ExpressionType getExpressionType(Expression expr) {
-        if(expr instanceof ColorLiteral) return ExpressionType.COLOR;
-        if(expr instanceof PixelLiteral) return ExpressionType.PIXEL;
-        if(expr instanceof ScalarLiteral) return ExpressionType.SCALAR;
-        if(expr instanceof BoolLiteral) return ExpressionType.BOOL;
+    private ExpressionType checkMultiplyOperation(MultiplyOperation handSide) {
 
-        if(expr instanceof VariableReference) {
-            return lookupVariableType(((VariableReference) expr).name);
+        ExpressionType lhs = getLhsExpressionType(handSide);
+        ExpressionType rhs = getRhsExpressionType(handSide);
+
+        if (((lhs == ExpressionType.PIXEL || lhs == ExpressionType.PERCENTAGE) && rhs == ExpressionType.SCALAR) || ((rhs == ExpressionType.PIXEL || rhs == ExpressionType.PERCENTAGE) && lhs == ExpressionType.SCALAR) || (lhs == ExpressionType.SCALAR && rhs == ExpressionType.SCALAR)) {
+            if (rhs == ExpressionType.SCALAR) {
+                return lhs;
+            } else {
+                return rhs;
+            }
         }
-
-        if(expr instanceof Operation) {
-            Operation op = (Operation) expr;
-            ExpressionType leftType = getExpressionType(op.lhs);
-            ExpressionType rightType = getExpressionType(op.rhs);
-
-            if(leftType == null || rightType == null) return null; // unresolved yet
-            if(leftType != rightType) return null; // type mismatch
-            return leftType; // result type is the type of operands
-        }
-
-        return null;
+        handSide.setError("Multiply operation got assigned with invalid types: " + lhs + " and " + rhs);
+        return ExpressionType.UNDEFINED;
     }
 
-
-    private ExpressionType lookupVariableType(String name) {
-        for (HashMap<String, ExpressionType> scope : variableTypes) {
-            if (scope.containsKey(name)) return scope.get(name);
+    private ExpressionType getRhsExpressionType(Operation handSide) {
+        ExpressionType rhs;
+        if (handSide.rhs instanceof VariableReference) {
+            rhs = getVariableReferenceExpressionType((VariableReference) handSide.rhs);
+        } else {
+            rhs = (handSide.rhs instanceof Operation) ? checkExpression((Operation) handSide.rhs) : getExpressionType(handSide.rhs);
         }
-        return null;
+        return rhs;
     }
 
-    private boolean isVariableDefined(String name) {
-        return lookupVariableType(name) != null;
+    private ExpressionType getLhsExpressionType(Operation handSide) {
+        ExpressionType lhs;
+        if (handSide.lhs instanceof VariableReference) {
+            lhs = getVariableReferenceExpressionType((VariableReference) handSide.lhs);
+        } else {
+            lhs = (handSide.lhs instanceof Operation) ? checkExpression((Operation) handSide.lhs) : getExpressionType(handSide.lhs);
+        }
+        return lhs;
     }
 
-    private ExpressionType getExpectedType(String property) {
-        switch (property) {
-            case "width":
-            case "height":
-            case "padding":
-            case "margin":
-                return ExpressionType.PIXEL;
-            case "color":
-            case "background-color":
-            case "border-color":
-                return ExpressionType.COLOR;
-            default:
-                return null;
+    private ExpressionType checkSubtractOperation(SubtractOperation handSide) {
+        ExpressionType lhs = getLhsExpressionType(handSide);
+        ExpressionType rhs = getRhsExpressionType(handSide);
+
+        if ((lhs == ExpressionType.PIXEL && rhs == ExpressionType.PIXEL) || (lhs == ExpressionType.PERCENTAGE && rhs == ExpressionType.PERCENTAGE) || (lhs == ExpressionType.SCALAR && rhs == ExpressionType.SCALAR)) {
+            return lhs;
         }
+        handSide.setError("Subtract operation got assigned with invalid types: " + lhs + " and " + rhs);
+        return ExpressionType.UNDEFINED;
+    }
+
+    private ExpressionType checkAddOperation(AddOperation handSide) {
+        ExpressionType lhs = getLhsExpressionType(handSide);
+        ExpressionType rhs = getRhsExpressionType(handSide);
+
+        if ((lhs == ExpressionType.PIXEL && rhs == ExpressionType.PIXEL) || (lhs == ExpressionType.PERCENTAGE && rhs == ExpressionType.PERCENTAGE) || (lhs == ExpressionType.SCALAR && rhs == ExpressionType.SCALAR)) {
+            return lhs;
+        }
+        handSide.setError("Add operation got assigned with invalid types: " + lhs + " and " + rhs);
+        return ExpressionType.UNDEFINED;
+    }
+
+    private ExpressionType getVariableReferenceExpressionType(VariableReference node) {
+        for (int i = 0; i < variableTypes.size(); i++) {
+            HashMap<String, ExpressionType> scope = variableTypes.get(i);
+
+            if (scope.containsKey(node.name)) {
+                return scope.get(node.name);
+            }
+        }
+
+        node.setError("Variable reference: '" + node.name + "' is not defined in accessible scope");
+        return ExpressionType.UNDEFINED;
     }
 }

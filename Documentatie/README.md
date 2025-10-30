@@ -35,25 +35,34 @@ Een compiler bestaat uit de volgende onderdelen:
 
 
 
-| id   | gedaan?                                                                                   |
-|------|-------------------------------------------------------------------------------------------|
-| PA00 | Soort van, implementatie is er al alleen waar ik deze zou moeten gebruiken is een raadsel |
-| PA01 |                                                                                           |
-| PA02 |                                                                                           |
-| PA03 |                                                                                           |
-| PA04 |                                                                                           |
-| PA04 |                                                                                           |
+| id   | gedaan? |
+|------|---------|
+| AL01 | Ja      |
+| AL02 | Ja      |
+| AL03 | Ja      |
+| AL04 | Ja      |
+
 
 
 | id   | gedaan? |
 |------|---------|
-| CH00 |         |
-| CH01 |         |
-| CH02 |         |
-| CH03 |         |
-| CH04 |         |
-| CH05 |         |
-| CH06 |         |
+| PA00 | Ja      |
+| PA01 | Ja      |
+| PA02 | Ja      |
+| PA03 | Ja      |
+| PA04 | Ja      |
+| PA04 | Ja      |
+
+
+| id   | gedaan? |
+|------|---------|
+| CH00 | Ja      |
+| CH01 | Ja      |
+| CH02 | Ja      |
+| CH03 | Nee     |
+| CH04 | Ja      |
+| CH05 | Nee     |
+| CH06 | Ja      |
 
 
 | id   | gedaan? |
