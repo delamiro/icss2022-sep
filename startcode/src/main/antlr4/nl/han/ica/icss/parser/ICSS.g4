@@ -13,7 +13,7 @@ FALSE: 'FALSE';
 PIXELSIZE: [0-9]+ 'px';
 PERCENTAGE: [0-9]+ '%';
 SCALAR: [0-9]+;
-
+BOOL: (TRUE | FALSE);
 // Colors
 COLOR: '#' [0-9a-f] [0-9a-f] [0-9a-f] [0-9a-f] [0-9a-f] [0-9a-f];
 
@@ -37,74 +37,32 @@ MUL: '*';
 ASSIGNMENT_OPERATOR: ':=';
 
 // --- PARSER ---
+color: COLOR;
+pixelSize: PIXELSIZE;
+percentage: PERCENTAGE;
+bool: (TRUE | FALSE);
+variableReference: CAPITAL_IDENT;
+propertyName: LOWER_IDENT;
+tagSelector: LOWER_IDENT;
+idSelector: ID_IDENT;
+classSelector: CLASS_IDENT;
+value: (color | pixelSize | percentage | variableReference);
 
-stylesheet
-    : statement* EOF
-    ;
 
-block
-    : (declaration | ifStatement)*
-    ;
+stylesheet: (variableAssignment | stylerule)* EOF;
 
-statement
-    : variableAssignment
-    | styleRule
-    | declaration
-    | ifStatement
-    ;
+stylerule: (tagSelector | idSelector | classSelector) OPEN_BRACE ( variableAssignment | declaration | ifClause)+ CLOSE_BRACE;
 
-variableAssignment
-    : CAPITAL_IDENT ASSIGNMENT_OPERATOR value SEMICOLON
-    ;
+variableAssignment: variableReference ASSIGNMENT_OPERATOR (color | pixelSize | bool | percentage | expression) SEMICOLON;
 
-styleRule
-    : selector OPEN_BRACE block CLOSE_BRACE
-    ;
-
-selector
-    : ID_IDENT
-    | CLASS_IDENT
-    | LOWER_IDENT
-    ;
-
-declaration
-    : LOWER_IDENT COLON value SEMICOLON
-    ;
-
-value
-    : expression
-    ;
+declaration: propertyName COLON (value | expression) SEMICOLON;
 
 expression
-    : expression (PLUS | MIN) term
-    | term
-    ;
+ : expression (MUL) expression #multiplyOperation
+ | expression (PLUS|MIN) expression #addOrSubtractOperation
+ | SCALAR #scalar
+ | value #expressionValue;
 
-term
-    : term MUL primaryValue
-    | primaryValue
-    ;
+ifClause: IF BOX_BRACKET_OPEN (variableReference | bool ) BOX_BRACKET_CLOSE OPEN_BRACE ( variableAssignment | declaration | ifClause)+ CLOSE_BRACE elseClause?;
 
-primaryValue
-    : COLOR
-    | PIXELSIZE
-    | PERCENTAGE
-    | SCALAR
-    | LOWER_IDENT
-    | CAPITAL_IDENT
-    | TRUE
-    | FALSE
-    | ID_IDENT
-    | CLASS_IDENT
-    | BOX_BRACKET_OPEN expression BOX_BRACKET_CLOSE
-    ;
-
-ifStatement
-    : IF BOX_BRACKET_OPEN expression BOX_BRACKET_CLOSE
-      OPEN_BRACE block CLOSE_BRACE
-      (ELSE elseBlock)?
-    ;
-
-elseBlock
-    : OPEN_BRACE block CLOSE_BRACE
-    ;
+elseClause: ELSE OPEN_BRACE ( variableAssignment | declaration | ifClause)+ CLOSE_BRACE;
