@@ -67,8 +67,8 @@ Een compiler bestaat uit de volgende onderdelen:
 
 | id   | gedaan? |
 |------|---------|
-| TR01 |         |
-| TR02 |         |
+| TR01 | Ja      |
+| TR02 | Ja      |
 
 
 | id   | gedaan? |
